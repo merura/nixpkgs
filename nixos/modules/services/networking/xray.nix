@@ -79,19 +79,13 @@ with lib;
     let
       cfg = config.services.xray;
       extension = cfg.configExtension;
-      serializer = if extension == "json" then builtins.toJSON else builtins.toYAML;
+      serializer = (pkgs.formats.${extension} {}).generate "xray.${extension}";
 
       settingsFile =
         if cfg.settingsFile != null then
           cfg.settingsFile
         else
-          pkgs.writeTextFile {
-            name = "xray.${extension}";
-            text = serializer cfg.settings;
-            checkPhase = ''
-              ${cfg.package}/bin/xray -test -config $out
-            '';
-          };
+          serializer cfg.settings;
 
     in
     mkIf cfg.enable {

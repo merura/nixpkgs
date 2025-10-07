@@ -1,4 +1,4 @@
-{ ... }:
+{ runTest, ... }:
 let
 
   xrayUser = {
@@ -64,15 +64,13 @@ let
     ];
   };
 
-in
-{
-  name = "xray";
-  nodes.machine =
-    { pkgs, ... }:
-    {
+  makeTest = extension: runTest {
+    name = "xray-${extension}";
+    nodes.machine = { pkgs, ... }: {
       environment.systemPackages = [ pkgs.curl ];
       services.xray = {
         enable = true;
+        configExtension = extension;
         settings = xraysettings;
       };
       services.httpd = {
@@ -81,15 +79,21 @@ in
       };
     };
 
-  testScript = ''
-    start_all()
+    testScript = ''
+      start_all()
 
-    machine.wait_for_unit("httpd.service")
-    machine.wait_for_unit("xray.service")
-    machine.wait_for_open_port(80)
-    machine.wait_for_open_port(1080)
-    machine.succeed(
-        "curl --fail --max-time 10 --proxy http://localhost:1080 http://localhost"
-    )
-  '';
+      machine.wait_for_unit("httpd.service")
+      machine.wait_for_unit("xray.service")
+      machine.wait_for_open_port(80)
+      machine.wait_for_open_port(1080)
+      machine.succeed(
+          "curl --fail --max-time 10 --proxy http://localhost:1080 http://localhost"
+      )
+    '';
+  };
+
+in
+{
+  json = makeTest "json";
+  yaml = makeTest "yaml";
 }
